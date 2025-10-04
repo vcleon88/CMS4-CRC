@@ -1,0 +1,14 @@
+# Load the reference image used for histogram standardization
+reference_image = sitk.ReadImage("reference.nii.gz", sitk.sitkFloat32)
+
+# Set up the histogram matching filter
+hist_match = sitk.HistogramMatchingImageFilter()
+hist_match.SetNumberOfHistogramLevels(256)
+hist_match.SetNumberOfMatchPoints(50)
+hist_match.ThresholdAtMeanIntensityOn()
+
+# Apply histogram matching
+standardized_image = hist_match.Execute(resampled_image, reference_image)
+
+# Save the histogram standardized image
+sitk.WriteImage(standardized_image, "histogram_standardized.nii.gz")

@@ -1,0 +1,85 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import roc_auc_score, roc_curve, auc
+
+# Classifiers
+from sklearn.svm import SVC
+from sklearn.gaussian_process import GaussianProcessClassifier
+from sklearn.gaussian_process.kernels import RBF
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
+
+# -------------------------
+# Step 1: Load feature CSV
+# -------------------------
+csv_path = "your_features.csv"  #  Replace with your CSV path
+df = pd.read_csv(csv_path)
+
+# Assume label column is named 'label', and features are the rest
+X = df.drop(columns=["label"])
+y = df["label"]
+
+# -------------------------
+# Step 2: Train-test split
+# -------------------------
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
+
+# -------------------------
+# Step 3: Feature scaling
+# -------------------------
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# -------------------------
+# Step 4: Define classifiers
+# -------------------------
+models = {
+    "SVM": SVC(kernel='linear', probability=True, random_state=42),
+    "Gaussian Process": GaussianProcessClassifier(kernel=1.0 * RBF(1.0), random_state=42),
+    "LDA": LinearDiscriminantAnalysis(),
+    "Decision Tree": DecisionTreeClassifier(random_state=42),
+    "Random Forest": RandomForestClassifier(n_estimators=100, random_state=42),
+    "AdaBoost": AdaBoostClassifier(n_estimators=100, random_state=42)
+}
+
+# -------------------------
+# Step 5: Train, predict, evaluate, and plot ROC
+# -------------------------
+plt.figure(figsize=(10, 8))
+for name, model in models.items():
+    # Train
+    model.fit(X_train_scaled, y_train)
+
+    # Predict probabilities
+    if hasattr(model, "predict_proba"):
+        y_score = model.predict_proba(X_test_scaled)[:, 1]
+    else:  # for LDA (if predict_proba not available)
+        y_score = model.decision_function(X_test_scaled)
+
+    # Compute AUC
+    model_auc = roc_auc_score(y_test, y_score)
+    print(f"{name} AUC: {model_auc:.3f}")
+
+    # Compute ROC curve
+    fpr, tpr, _ = roc_curve(y_test, y_score)
+    roc_auc = auc(fpr, tpr)
+
+    # Plot
+    plt.plot(fpr, tpr, lw=2, label=f"{name} (AUC = {roc_auc:.2f})")
+
+# Plot settings
+plt.plot([0, 1], [0, 1], '--', color='gray')
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('False Positive Rate', fontsize=12)
+plt.ylabel('True Positive Rate', fontsize=12)
+plt.title('ROC Curves for Multiple Classifiers', fontsize=14)
+plt.legend(loc="lower right")
+plt.grid(True)
+plt.tight_layout()
+plt.show()

@@ -1,0 +1,15 @@
+#N4 Bias Field Correction
+import SimpleITK as sitk
+
+# 读取原始MRI图像
+input_image = sitk.ReadImage("input_mri.nii.gz", sitk.sitkFloat32)
+
+# 进行bias field correction前先创建mask（脑部区域）
+mask_image = sitk.OtsuThreshold(input_image, 0, 1, 200)
+
+# N4 Bias Field Correction
+corrector = sitk.N4BiasFieldCorrectionImageFilter()
+corrected_image = corrector.Execute(input_image, mask_image)
+
+# 保存校正后的图像
+sitk.WriteImage(corrected_image, "n4_corrected.nii.gz")

@@ -1,0 +1,14 @@
+import SimpleITK as sitk
+
+# Load the input MRI image
+input_image = sitk.ReadImage("input_mri.nii.gz", sitk.sitkFloat32)
+
+# Create a binary mask using Otsu thresholding
+mask_image = sitk.OtsuThreshold(input_image, 0, 1, 200)
+
+# Apply N4 bias field correction
+n4_corrector = sitk.N4BiasFieldCorrectionImageFilter()
+corrected_image = n4_corrector.Execute(input_image, mask_image)
+
+# Save the corrected image
+sitk.WriteImage(corrected_image, "n4_corrected.nii.gz")

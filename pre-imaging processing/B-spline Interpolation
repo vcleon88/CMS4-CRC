@@ -26,3 +26,4 @@ resampled_image = sitk.Resample(
 
 # Save the resampled image
 sitk.WriteImage(resampled_image, "resampled_1mm.nii.gz")
+

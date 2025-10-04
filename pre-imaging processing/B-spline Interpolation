@@ -1,0 +1,28 @@
+# Define target spacing (1mm isotropic)
+target_spacing = [1.0, 1.0, 1.0]
+
+# Get original image spacing and size
+original_spacing = corrected_image.GetSpacing()
+original_size = corrected_image.GetSize()
+
+# Calculate new image size based on target spacing
+new_size = [
+    int(round(original_size[i] * (original_spacing[i] / target_spacing[i])))
+    for i in range(3)
+]
+
+# Perform B-spline interpolation
+resampled_image = sitk.Resample(
+    corrected_image,
+    new_size,
+    sitk.Transform(),
+    sitk.sitkBSpline,
+    corrected_image.GetOrigin(),
+    target_spacing,
+    corrected_image.GetDirection(),
+    0.0,
+    corrected_image.GetPixelID()
+)
+
+# Save the resampled image
+sitk.WriteImage(resampled_image, "resampled_1mm.nii.gz")

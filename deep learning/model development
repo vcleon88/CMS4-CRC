@@ -1,0 +1,82 @@
+from CMSdeep import get_model  #
+from utils.plot_helper import plot_auc, plot_loss  #
+
+from sklearn.model_selection import StratifiedKFold
+from sklearn.metrics import roc_auc_score, accuracy_score
+import numpy as np
+import matplotlib.pyplot as plt
+import time
+
+# === MRI Binary Classification Task ===
+# Objective: Use deep learning models (VGG16, ResNet50, DenseNet201) 
+# to classify MRI images into CMS4 vs. non-CMS4 categories.
+# All models will be evaluated using 10-fold cross-validation 
+# and will output AUC scores and validation losses.
+
+# Dummy placeholder for MRI image and label loading
+def load_data():
+    """
+    Replace this with your actual MRI image loading logic.
+    X: np.array of shape [N, H, W, C]
+    y: np.array of shape [N], binary labels (0 or 1)
+    """
+    return X, y  # Placeholder
+
+# Load your MRI dataset
+X, y = load_data()
+kfold = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
+
+models = ['vgg16', 'resnet50', 'densenet201']
+results = {}
+
+for model_name in models:
+    aucs = []
+    losses = []
+    accs = []
+    print(f"\n[INFO] Running model: {model_name} on MRI classification task")
+
+    for fold, (train_idx, val_idx) in enumerate(kfold.split(X, y), 1):
+        print(f"  Fold {fold}/10")
+        X_train, X_val = X[train_idx], X[val_idx]
+        y_train, y_val = y[train_idx], y[val_idx]
+
+        # Get the model from CMSdeep wrapper
+        model = get_model(model_name)
+
+        # Start timer
+        start_time = time.time()
+
+        # Train the model — history 和 y_pred 
+        history, y_pred = model.train(X_train, y_train, X_val, y_val)
+
+        # Compute metrics
+        auc = roc_auc_score(y_val, y_pred)
+        loss = history['val_loss'][-1]
+        y_pred_label = (y_pred > 0.5).astype(int)
+        acc = accuracy_score(y_val, y_pred_label)
+
+        aucs.append(auc)
+        losses.append(loss)
+        accs.append(acc)
+
+        print(f"    AUC: {auc:.3f} | Acc: {acc:.3f} | Time: {time.time() - start_time:.1f}s")
+
+    results[model_name] = {
+        'aucs': aucs,
+        'losses': losses,
+        'accs': accs,
+        'mean_auc': np.mean(aucs),
+        'mean_loss': np.mean(losses),
+        'mean_acc': np.mean(accs),
+    }
+
+    # Visualization
+    plot_auc(model_name, aucs)
+    plot_loss(model_name, losses)
+
+    print(f"[RESULT] {model_name} | Mean AUC: {np.mean(aucs):.3f} | Mean Acc: {np.mean(accs):.3f}\n")
+
+# (
+print("\n[SUMMARY] Average performance per model:")
+for model_name, metrics in results.items():
+    print(f"  {model_name.upper():12s} | AUC: {metrics['mean_auc']:.3f} | Acc: {metrics['mean_acc']:.3f} | Loss: {metrics['mean_loss']:.4f}")

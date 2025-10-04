@@ -1,15 +1,62 @@
-#N4 Bias Field Correction
+#step 1 N4 Bias Field Correction
 import SimpleITK as sitk
 
-# 读取原始MRI图像
+# Load the input MRI image
 input_image = sitk.ReadImage("input_mri.nii.gz", sitk.sitkFloat32)
 
-# 进行bias field correction前先创建mask（脑部区域）
+# Create a binary mask using Otsu thresholding
 mask_image = sitk.OtsuThreshold(input_image, 0, 1, 200)
 
-# N4 Bias Field Correction
-corrector = sitk.N4BiasFieldCorrectionImageFilter()
-corrected_image = corrector.Execute(input_image, mask_image)
+# Apply N4 bias field correction
+n4_corrector = sitk.N4BiasFieldCorrectionImageFilter()
+corrected_image = n4_corrector.Execute(input_image, mask_image)
 
-# 保存校正后的图像
-sitk.WriteImage(corrected_image, "n4_corrected.nii.gz")
+# Save the corrected image
+sitk.WriteImage(corrected_image, "n4_corrected.nii.gz"))
+
+#step2 B-spline Interpolation
+
+# Define target spacing (1mm isotropic)
+target_spacing = [1.0, 1.0, 1.0]
+
+# Get original image spacing and size
+original_spacing = corrected_image.GetSpacing()
+original_size = corrected_image.GetSize()
+
+# Calculate new image size based on target spacing
+new_size = [
+    int(round(original_size[i] * (original_spacing[i] / target_spacing[i])))
+    for i in range(3)
+]
+
+# Perform B-spline interpolation
+resampled_image = sitk.Resample(
+    corrected_image,
+    new_size,
+    sitk.Transform(),
+    sitk.sitkBSpline,
+    corrected_image.GetOrigin(),
+    target_spacing,
+    corrected_image.GetDirection(),
+    0.0,
+    corrected_image.GetPixelID()
+)
+
+# Save the resampled image
+sitk.WriteImage(resampled_image, "resampled_1mm.nii.gz")
+
+#step 3 Histogram Standardization 
+# Load the reference image used for histogram standardization
+reference_image = sitk.ReadImage("reference.nii.gz", sitk.sitkFloat32)
+
+# Set up the histogram matching filter
+hist_match = sitk.HistogramMatchingImageFilter()
+hist_match.SetNumberOfHistogramLevels(256)
+hist_match.SetNumberOfMatchPoints(50)
+hist_match.ThresholdAtMeanIntensityOn()
+
+# Apply histogram matching
+standardized_image = hist_match.Execute(resampled_image, reference_image)
+
+# Save the histogram standardized image
+sitk.WriteImage(standardized_image, "histogram_standardized.nii.gz")
